@@ -4,12 +4,12 @@ const CACHE_NAME = 'estoque-app-cache-v6'; // Mude a versão para forçar a atua
 
 // Lista de arquivos essenciais para o "esqueleto" da aplicação (App Shell)
 const urlsToCache = [
-  '/appEstoque/', // A página principal (index.html)
-  '/appEstoque/_dash-layout',
-  '/appEstoque/_dash-dependencies',
-  '/appEstoque/assets/manifest.json',
-  '/appEstoque/assets/icon-192x192.png',
-  '/appEstoque/assets/icon-512x512.png'
+  '/', // A página principal (index.html)
+  '/_dash-layout',
+  '/_dash-dependencies',
+  '/assets/manifest.json',
+  '/assets/icon-192x192.png',
+  '/assets/icon-512x512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -55,7 +55,7 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           // Se tudo falhar (cache e rede), mostra a página principal do cache
           // Isso garante que o app sempre abra, mesmo offline.
-          return caches.match('/appEstoque/');
+          return caches.match('/');
         })
     );
   }
