@@ -3,13 +3,15 @@
 const CACHE_NAME = 'estoque-app-cache-v6'; // Mude a versão para forçar a atualização
 
 // Lista de arquivos essenciais para o "esqueleto" da aplicação (App Shell)
+const REPO_PREFIX = '/appEstoque';
+
 const urlsToCache = [
-  '/', // A página principal (index.html)
-  '/_dash-layout',
-  '/_dash-dependencies',
-  '/assets/manifest.json',
-  '/assets/icon-192x192.png',
-  '/assets/icon-512x512.png'
+  `${REPO_PREFIX}/`,
+  `${REPO_PREFIX}/_dash-layout`,
+  `${REPO_PREFIX}/_dash-dependencies`,
+  `${REPO_PREFIX}/assets/manifest.json`,
+  `${REPO_PREFIX}/assets/icon-192x192.png`,
+  `${REPO_PREFIX}/assets/icon-512x512.png`
 ];
 
 self.addEventListener('install', event => {
