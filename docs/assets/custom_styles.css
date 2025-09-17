@@ -1,0 +1,30 @@
+/* assets/custom_styles.css */
+
+/* Remove a seta/marcador padrão do navegador do elemento Summary */
+.collapsible-summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-summary::marker {
+  display: none;
+  content: "";
+}
+
+/* Garante que o Summary use a largura total e posicione nosso ícone */
+.collapsible-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  list-style: none; /* Remove o marcador no Firefox */
+}
+
+/* Estiliza o ícone de chevron que colocaremos dentro do Summary */
+.chevron-icon {
+  transition: transform 0.3s ease; /* Animação suave de rotação */
+}
+
+/* Gira o ícone de chevron quando o quadro Details estiver aberto */
+details[open] .chevron-icon {
+  transform: rotate(90deg);
+}
