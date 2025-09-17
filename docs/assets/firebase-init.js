@@ -58,6 +58,9 @@ function preCacheEssentialData() {
 
 // --- LÓGICA DE AUTENTICAÇÃO PRINCIPAL ---
 function runAuthLogic() {
+    // Pega o prefixo do caminho base da configuração do Dash
+    const basePath = (window.dash_clientside && window.dash_clientside.config && window.dash_clientside.config.requests_pathname_prefix) || '/';
+
     auth.onAuthStateChanged(user => {
         const loadingScreen = document.getElementById('loading-screen');
         if (!loadingScreen) return;
@@ -70,16 +73,18 @@ function runAuthLogic() {
             loadingScreen.style.display = 'none';
             if (appContent) appContent.style.display = 'block';
             if (sidebar) sidebar.style.display = 'flex';
-            if (window.location.pathname === '/login') window.location.href = '/';
+            // CORREÇÃO: Usa o basePath para o redirecionamento
+            if (window.location.pathname.endsWith('/login')) window.location.href = basePath;
             preCacheEssentialData();
         } else {
-            if (window.location.pathname === '/login') {
+            if (window.location.pathname.endsWith('/login')) {
                 loadingScreen.style.display = 'none';
                 if (appContent) appContent.style.display = 'block';
                 if (sidebar) sidebar.style.display = 'none';
                 if (pageContainer) pageContainer.style.marginLeft = '0px';
             } else {
-                window.location.href = '/login';
+                // CORREÇÃO: Usa o basePath para o redirecionamento
+                window.location.href = `${basePath}login`;
             }
         }
     });
