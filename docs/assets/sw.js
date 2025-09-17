@@ -57,7 +57,7 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           // Se tudo falhar (cache e rede), mostra a página principal do cache
           // Isso garante que o app sempre abra, mesmo offline.
-          return caches.match('/');
+          return caches.match(`${REPO_PREFIX}/`);
         })
     );
   }
