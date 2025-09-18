@@ -1,7 +1,18 @@
+
 <!DOCTYPE html>
 
 <html>
 <head>
+<script>
+  (function(){
+    var redirect = sessionStorage.redirect;
+    delete sessionStorage.redirect;
+    if (redirect && redirect !== location.href) {
+      history.replaceState(null, null, redirect);
+    }
+  })();
+</script>
+
 <meta content="" name="description"/>
 <meta content="summary_large_image" property="twitter:card"/>
 <meta content="http://localhost/appEstoque/" property="twitter:url"/>
@@ -19,11 +30,10 @@
 <link href="/appEstoque/_favicon.ico?v=3.1.1" rel="icon" type="image/x-icon"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
 <link href="/appEstoque/assets/custom_styles.css?m=1755652265.9430752" rel="stylesheet"/>
+<link href="/assets/manifest.json" rel="manifest"/>
 </head>
 <body>
-<!--[if IE]><script>
-        alert("Dash v2.7+ does not support Internet Explorer. Please use a newer browser.");
-        </script><![endif]-->
+<div id="root"></div>
 <div id="react-entry-point">
 <div class="_dash-loading">
         Loading...
@@ -41,7 +51,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="/appEstoque/assets/firebase-init.js?m=1758121583.2159343"></script>
 <script src="/appEstoque/assets/registrar-sw.js?m=1757821788.6039982"></script>
-<script src="/appEstoque/assets/sw.js?m=1757822351.5695145"></script>
+<script src="/appEstoque/assets/sw.js?m=1758127879.323629"></script>
 <script src="/appEstoque/assets/js/compras_callbacks.js?m=1757812120.53671"></script>
 <script src="/appEstoque/assets/js/conferencia_estoque_callbacks.js?m=1757811530.6042154"></script>
 <script src="/appEstoque/assets/js/configuracoes_callbacks.js?m=1756093168.883989"></script>
@@ -54,6 +64,13 @@
 <script src="/appEstoque/_dash-component-suites/dash/dcc/dash_core_components-shared.v3_1_0m1753123333.js"></script>
 <script src="/appEstoque/_dash-component-suites/dash/html/dash_html_components.v3_0_3m1753123333.min.js"></script>
 <script src="/appEstoque/_dash-component-suites/dash/dash_table/bundle.v6_0_3m1753123332.js"></script>
+<script>
+(function() {
+    var clientside = window.dash_clientside = window.dash_clientside || {};
+    var ns = clientside["_dashprivate_clientside_funcs"] = clientside["_dashprivate_clientside_funcs"] || {};
+    ns["e21641cfd1c6e526e08db0a5d7225de66a99c950e4661db41d23bff9ab0c4f8e"] = function(cat_value) { return null; };
+})();
+</script>
 <script>
 (function() {
     var clientside = window.dash_clientside = window.dash_clientside || {};
