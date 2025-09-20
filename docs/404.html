@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Redirecting...</title>
+    <script>
+      // Este script captura o caminho que gerou o 404 (ex: /appEstoque/login)
+      // e redireciona para a raiz da aplicação, guardando o caminho original.
+      // O index.html irá então ler este caminho e corrigir a URL.
+      
+      // Pega o caminho que o usuário tentou acessar
+      const path = window.location.pathname;
+
+      // Armazena o caminho que deve ser carregado pela SPA no sessionStorage
+      sessionStorage.redirect = path;
+
+      // Redireciona para a raiz da SPA (index.html)
+      window.location.href = '/appEstoque/';
+    </script>
+  </head>
+  <body></body>
+</html>
