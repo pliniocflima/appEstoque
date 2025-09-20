@@ -1,16 +1,17 @@
+
 <!DOCTYPE html>
 
 <html>
 <head>
 <script>
-          (function(){
-            var redirect = sessionStorage.redirect;
-            delete sessionStorage.redirect;
-            if (redirect && redirect !== location.href) {
-              history.replaceState(null, null, redirect);
-            }
-          })();
-        </script>
+  (function(){
+    var redirect = sessionStorage.redirect;
+    delete sessionStorage.redirect;
+    if (redirect && redirect !== location.href) {
+      history.replaceState(null, null, redirect);
+    }
+  })();
+</script>
 
 <meta content="" name="description"/>
 <meta content="summary_large_image" property="twitter:card"/>
@@ -29,18 +30,17 @@
 <link href="/appEstoque/_favicon.ico?v=3.1.1" rel="icon" type="image/x-icon"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
 <link href="/appEstoque/assets/custom_styles.css?m=1755652265.9430752" rel="stylesheet"/>
+<link href="/appEstoque/assets/manifest.json" rel="manifest"/>
 </head>
 <body>
-<!--[if IE]><script>
-        alert("Dash v2.7+ does not support Internet Explorer. Please use a newer browser.");
-        </script><![endif]-->
+<div id="root"></div>
 <div id="react-entry-point">
 <div class="_dash-loading">
         Loading...
     </div>
 </div>
 <footer>
-<script id="_dash-config" type="application/json">{"url_base_pathname":null,"requests_pathname_prefix":"\u002fappEstoque\u002f","ui":false,"props_check":false,"disable_version_check":false,"show_undo_redo":false,"suppress_callback_exceptions":true,"update_title":"Updating...","children_props":{"dash_core_components":{"Checklist":["options[].label"],"Clipboard":[],"ConfirmDialog":[],"ConfirmDialogProvider":[],"DatePickerRange":[],"DatePickerSingle":[],"Download":[],"Dropdown":["options[].label"],"Geolocation":[],"Graph":[],"Input":[],"Interval":[],"Link":[],"Loading":["custom_spinner"],"Location":[],"Markdown":[],"RadioItems":["options[].label"],"RangeSlider":[],"Slider":[],"Store":[],"Tab":[],"Tabs":[],"Textarea":[],"Tooltip":[],"Upload":[]},"dash_html_components":{"A":[],"Abbr":[],"Acronym":[],"Address":[],"Area":[],"Article":[],"Aside":[],"Audio":[],"B":[],"Base":[],"Basefont":[],"Bdi":[],"Bdo":[],"Big":[],"Blink":[],"Blockquote":[],"Br":[],"Button":[],"Canvas":[],"Caption":[],"Center":[],"Cite":[],"Code":[],"Col":[],"Colgroup":[],"Content":[],"Data":[],"Datalist":[],"Dd":[],"Del":[],"Details":[],"Dfn":[],"Dialog":[],"Div":[],"Dl":[],"Dt":[],"Em":[],"Embed":[],"Fieldset":[],"Figcaption":[],"Figure":[],"Font":[],"Footer":[],"Form":[],"Frame":[],"Frameset":[],"H1":[],"H2":[],"H3":[],"H4":[],"H5":[],"H6":[],"Header":[],"Hgroup":[],"Hr":[],"I":[],"Iframe":[],"Img":[],"Ins":[],"Kbd":[],"Keygen":[],"Label":[],"Legend":[],"Li":[],"Link":[],"Main":[],"MapEl":[],"Mark":[],"Marquee":[],"Meta":[],"Meter":[],"Nav":[],"Nobr":[],"Noscript":[],"ObjectEl":[],"Ol":[],"Optgroup":[],"Option":[],"Output":[],"P":[],"Param":[],"Picture":[],"Plaintext":[],"Pre":[],"Progress":[],"Q":[],"Rb":[],"Rp":[],"Rt":[],"Rtc":[],"Ruby":[],"S":[],"Samp":[],"Script":[],"Section":[],"Select":[],"Shadow":[],"Slot":[],"Small":[],"Source":[],"Spacer":[],"Span":[],"Strike":[],"Strong":[],"Sub":[],"Summary":[],"Sup":[],"Table":[],"Tbody":[],"Td":[],"Template":[],"Textarea":[],"Tfoot":[],"Th":[],"Thead":[],"Time":[],"Title":[],"Tr":[],"Track":[],"U":[],"Ul":[],"Var":[],"Video":[],"Wbr":[],"Xmp":[]},"dash_table":{"DataTable":[]}},"serve_locally":true,"dash_version":"3.1.1","python_version":"3.11.9 (tags\u002fv3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]","dash_version_url":"https:\u002f\u002fdash-version.plotly.com:8080\u002fcurrent_version","ddk_version":null,"plotly_version":"6.2.0"}</script>
+<script id="_dash-config" type="application/json">{"url_base_pathname": "/appEstoque/", "requests_pathname_prefix": "/appEstoque/", "ui": false, "props_check": false, "disable_version_check": false, "show_undo_redo": false, "suppress_callback_exceptions": true, "update_title": "Updating...", "children_props": {"dash_core_components": {"Checklist": ["options[].label"], "Clipboard": [], "ConfirmDialog": [], "ConfirmDialogProvider": [], "DatePickerRange": [], "DatePickerSingle": [], "Download": [], "Dropdown": ["options[].label"], "Geolocation": [], "Graph": [], "Input": [], "Interval": [], "Link": [], "Loading": ["custom_spinner"], "Location": [], "Markdown": [], "RadioItems": ["options[].label"], "RangeSlider": [], "Slider": [], "Store": [], "Tab": [], "Tabs": [], "Textarea": [], "Tooltip": [], "Upload": []}, "dash_html_components": {"A": [], "Abbr": [], "Acronym": [], "Address": [], "Area": [], "Article": [], "Aside": [], "Audio": [], "B": [], "Base": [], "Basefont": [], "Bdi": [], "Bdo": [], "Big": [], "Blink": [], "Blockquote": [], "Br": [], "Button": [], "Canvas": [], "Caption": [], "Center": [], "Cite": [], "Code": [], "Col": [], "Colgroup": [], "Content": [], "Data": [], "Datalist": [], "Dd": [], "Del": [], "Details": [], "Dfn": [], "Dialog": [], "Div": [], "Dl": [], "Dt": [], "Em": [], "Embed": [], "Fieldset": [], "Figcaption": [], "Figure": [], "Font": [], "Footer": [], "Form": [], "Frame": [], "Frameset": [], "H1": [], "H2": [], "H3": [], "H4": [], "H5": [], "H6": [], "Header": [], "Hgroup": [], "Hr": [], "I": [], "Iframe": [], "Img": [], "Ins": [], "Kbd": [], "Keygen": [], "Label": [], "Legend": [], "Li": [], "Link": [], "Main": [], "MapEl": [], "Mark": [], "Marquee": [], "Meta": [], "Meter": [], "Nav": [], "Nobr": [], "Noscript": [], "ObjectEl": [], "Ol": [], "Optgroup": [], "Option": [], "Output": [], "P": [], "Param": [], "Picture": [], "Plaintext": [], "Pre": [], "Progress": [], "Q": [], "Rb": [], "Rp": [], "Rt": [], "Rtc": [], "Ruby": [], "S": [], "Samp": [], "Script": [], "Section": [], "Select": [], "Shadow": [], "Slot": [], "Small": [], "Source": [], "Spacer": [], "Span": [], "Strike": [], "Strong": [], "Sub": [], "Summary": [], "Sup": [], "Table": [], "Tbody": [], "Td": [], "Template": [], "Textarea": [], "Tfoot": [], "Th": [], "Thead": [], "Time": [], "Title": [], "Tr": [], "Track": [], "U": [], "Ul": [], "Var": [], "Video": [], "Wbr": [], "Xmp": []}, "dash_table": {"DataTable": []}}, "serve_locally": true, "dash_version": "3.1.1", "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "dash_version_url": "https://dash-version.plotly.com:8080/current_version", "ddk_version": null, "plotly_version": "6.2.0"}</script>
 <script src="/appEstoque/_dash-component-suites/dash/deps/polyfill@7.v3_1_1m1753123333.12.1.min.js"></script>
 <script src="/appEstoque/_dash-component-suites/dash/deps/react@18.v3_1_1m1753123333.3.1.min.js"></script>
 <script src="/appEstoque/_dash-component-suites/dash/deps/react-dom@18.v3_1_1m1753123333.3.1.min.js"></script>
@@ -64,6 +64,13 @@
 <script src="/appEstoque/_dash-component-suites/dash/dcc/dash_core_components-shared.v3_1_0m1753123333.js"></script>
 <script src="/appEstoque/_dash-component-suites/dash/html/dash_html_components.v3_0_3m1753123333.min.js"></script>
 <script src="/appEstoque/_dash-component-suites/dash/dash_table/bundle.v6_0_3m1753123332.js"></script>
+<script>
+(function() {
+    var clientside = window.dash_clientside = window.dash_clientside || {};
+    var ns = clientside["_dashprivate_clientside_funcs"] = clientside["_dashprivate_clientside_funcs"] || {};
+    ns["e21641cfd1c6e526e08db0a5d7225de66a99c950e4661db41d23bff9ab0c4f8e"] = function(cat_value) { return null; };
+})();
+</script>
 <script>
 (function() {
     var clientside = window.dash_clientside = window.dash_clientside || {};
