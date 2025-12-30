@@ -1,4 +1,5 @@
 {
   "name": "Estoque de Casa",
-  "description": "A robust, offline-first PWA for managing home inventory, shopping lists, and consumption tracking using Firebase."
+  "description": "A robust, offline-first PWA for managing home inventory, shopping lists, and consumption tracking using Firebase.",
+  "requestFramePermissions": []
 }

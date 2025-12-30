@@ -1,7 +1,8 @@
 export const registerSW = () => {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      // Usar './sw.js' em vez de '/sw.js' para suportar subdiretórios (GitHub Pages)
+      navigator.serviceWorker.register('./sw.js')
         .then((registration) => {
           console.log('SW registered: ', registration);
         })
