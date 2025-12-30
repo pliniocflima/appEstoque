@@ -13,6 +13,9 @@ const Login: React.FC = () => {
   const [currentDomain, setCurrentDomain] = useState('');
   const navigate = useNavigate();
 
+  // Mude para false para esconder o aviso de configuração de domínio
+  const SHOW_DOMAIN_WARNING = true;
+
   useEffect(() => {
     // Captura o domínio atual para ajudar na configuração do Firebase
     setCurrentDomain(window.location.hostname);
@@ -116,13 +119,15 @@ const Login: React.FC = () => {
       </div>
 
       {/* Helper para configuração do Firebase */}
-      <div className="mt-8 max-w-md w-full bg-blue-50 border border-blue-200 p-4 rounded-lg text-xs text-blue-800">
-        <p className="font-bold mb-2">⚠️ Configuração Necessária:</p>
-        <p className="mb-2">Para o login funcionar, adicione este domínio no Firebase Console em <strong>Authentication &gt; Settings &gt; Authorized domains</strong>:</p>
-        <code className="block bg-white p-2 rounded border border-blue-200 font-mono text-center select-all">
-          {currentDomain}
-        </code>
-      </div>
+      {SHOW_DOMAIN_WARNING && (
+        <div className="mt-8 max-w-md w-full bg-blue-50 border border-blue-200 p-4 rounded-lg text-xs text-blue-800">
+          <p className="font-bold mb-2">⚠️ Configuração Necessária:</p>
+          <p className="mb-2">Para o login funcionar, adicione este domínio no Firebase Console em <strong>Authentication &gt; Settings &gt; Authorized domains</strong>:</p>
+          <code className="block bg-white p-2 rounded border border-blue-200 font-mono text-center select-all">
+            {currentDomain}
+          </code>
+        </div>
+      )}
     </div>
   );
 };
