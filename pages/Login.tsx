@@ -14,7 +14,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
 
   // Mude para false para esconder o aviso de configuração de domínio
-  const SHOW_DOMAIN_WARNING = true;
+  const SHOW_DOMAIN_WARNING = false;
 
   useEffect(() => {
     // Captura o domínio atual para ajudar na configuração do Firebase
