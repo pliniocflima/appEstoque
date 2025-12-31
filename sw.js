@@ -1,4 +1,4 @@
-const CACHE_NAME = 'estoque-casa-vBETA3';
+const CACHE_NAME = 'estoque-casa-vBETA4';
 const urlsToCache = [
   './',
   './index.html',
@@ -34,7 +34,7 @@ self.addEventListener('activate', (event) => {
         );
       })
     ])
-  );
+  ])
 });
 
 self.addEventListener('fetch', (event) => {

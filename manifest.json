@@ -1,7 +1,8 @@
 {
   "name": "Estoque de Casa",
   "short_name": "Estoque",
-  "start_url": ".",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
