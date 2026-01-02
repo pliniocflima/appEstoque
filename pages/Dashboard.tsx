@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { subscribeToCollection } from '../services/db';
 import { auth } from '../services/firebase';
@@ -5,23 +6,29 @@ import { Subcategory } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Utensils, AlertTriangle } from 'lucide-react';
+import { useApp } from '../App';
 
 const Dashboard: React.FC = () => {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const user = auth.currentUser;
+  const { profile } = useApp();
 
   useEffect(() => {
-    if (user) {
-      const unsub = subscribeToCollection('subcategories', user.uid, (data) => {
+    if (user && profile) {
+      const unsub = subscribeToCollection('subcategories', profile.householdId, (data) => {
         setSubcategories(data as Subcategory[]);
       });
       return () => unsub();
     }
-  }, [user]);
+  }, [user, profile]);
 
   const totalItems = subcategories.length;
-  const lowStockItems = subcategories.filter(s => s.currentStock < s.targetStock).length;
-  const okStockItems = totalItems - lowStockItems;
+  const lowStockItems = subcategories.filter(s => {
+    const current = Number(s.currentStock) || 0;
+    const target = Number(s.targetStock) || 0;
+    return current < target;
+  }).length;
+  const okStockItems = Math.max(0, totalItems - lowStockItems);
 
   const data = [
     { name: 'Em Estoque', value: okStockItems, color: '#22c55e' },
@@ -33,7 +40,6 @@ const Dashboard: React.FC = () => {
       <h2 className="text-2xl font-bold text-gray-800">Visão Geral</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Quick Stats Cards */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
@@ -60,29 +66,33 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Chart */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
           <h3 className="text-lg font-semibold mb-4">Saúde do Estoque</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                innerRadius={60}
-                outerRadius={80}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend verticalAlign="bottom" height={36}/>
-            </PieChart>
-          </ResponsiveContainer>
+          {totalItems > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36}/>
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm italic">
+              Nenhum dado para exibir. Comece cadastrando itens.
+            </div>
+          )}
         </div>
 
-        {/* Shortcuts */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
           <div className="space-y-3">
@@ -94,7 +104,7 @@ const Dashboard: React.FC = () => {
                 <ShoppingCart className="text-blue-600 mr-3" size={20} />
                 <span className="font-medium text-gray-700">Ver Lista de Compras</span>
               </div>
-              <span className="text-sm text-gray-500">Go &rarr;</span>
+              <span className="text-sm text-gray-500">Ir &rarr;</span>
             </Link>
             <Link 
               to="/consumo" 
@@ -104,7 +114,7 @@ const Dashboard: React.FC = () => {
                 <Utensils className="text-orange-600 mr-3" size={20} />
                 <span className="font-medium text-gray-700">Registrar Consumo</span>
               </div>
-              <span className="text-sm text-gray-500">Go &rarr;</span>
+              <span className="text-sm text-gray-500">Ir &rarr;</span>
             </Link>
           </div>
         </div>

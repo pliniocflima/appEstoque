@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   query, 
@@ -7,77 +8,181 @@ import {
   updateDoc, 
   deleteDoc, 
   doc, 
-  writeBatch 
+  writeBatch,
+  serverTimestamp,
+  getDocs,
+  getDoc,
+  setDoc,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Category, Subcategory, Product } from '../types';
+import { Measure, Product, Movement, CartItem, UserProfile } from '../types';
 
-// Generic hook-like functions for subscriptions (to be used inside useEffect)
+// Gestão de Perfil e Casa
+export const getOrCreateProfile = async (uid: string, email: string | null): Promise<UserProfile> => {
+  const ref = doc(db, 'profiles', uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return snap.data() as UserProfile;
+  
+  const newProfile = { uid, email, householdId: uid }; 
+  await setDoc(ref, newProfile);
+  return newProfile;
+};
+
+export const updateHousehold = async (uid: string, householdId: string) => {
+  await updateDoc(doc(db, 'profiles', uid), { householdId });
+};
 
 export const subscribeToCollection = (
   colName: string, 
-  userId: string, 
+  householdId: string, 
   callback: (data: any[]) => void
 ) => {
-  if (!userId) return () => {};
-  
-  const q = query(collection(db, colName), where("userId", "==", userId));
+  if (!householdId) return () => {};
+  const q = query(collection(db, colName), where("householdId", "==", householdId));
   return onSnapshot(q, (snapshot) => {
     const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     callback(items);
   });
 };
 
-export const addCategory = async (userId: string, name: string) => {
-  await addDoc(collection(db, 'categories'), { name, userId });
-};
-
-export const addSubcategory = async (userId: string, data: Omit<Subcategory, 'id' | 'userId'>) => {
-  await addDoc(collection(db, 'subcategories'), { ...data, userId });
-};
-
-export const addProduct = async (userId: string, data: Omit<Product, 'id' | 'userId'>) => {
-  await addDoc(collection(db, 'products'), { ...data, userId });
-};
-
-export const updateStock = async (subcategoryId: string, newStock: number) => {
-  const ref = doc(db, 'subcategories', subcategoryId);
-  await updateDoc(ref, { currentStock: newStock });
-};
-
-export const toggleShoppingList = async (subcategoryId: string, status: boolean) => {
-  const ref = doc(db, 'subcategories', subcategoryId);
-  await updateDoc(ref, { isOnShoppingList: status });
+export const updateItem = async (colName: string, id: string, data: any) => {
+  await updateDoc(doc(db, colName, id), data);
 };
 
 export const deleteItem = async (colName: string, id: string) => {
   await deleteDoc(doc(db, colName, id));
 };
 
-export const processPurchase = async (cartItems: any[]) => {
+export const deleteMovementWithReversal = async (movement: Movement) => {
   const batch = writeBatch(db);
+  const subRef = doc(db, 'subcategories', movement.subcategoryId);
+  const subSnap = await getDoc(subRef);
   
-  cartItems.forEach(item => {
-    // Update Subcategory Stock
-    const subRef = doc(db, 'subcategories', item.subcategoryId);
-    // Note: In a real app we would read first to be atomic, but simplistic increment here
-    // Since we don't have atomic increment accessible easily without knowing current, 
-    // we assume the Cart logic passed the *new* total or we do client side calculation before calling this.
-    // For this simple PWA, we will rely on client passing the calculated new value or use increment.
-    // Let's assume the UI calculates the new stock locally.
-    
-    // Actually, let's use the UI logic to calculate final stock and just set it here.
-    // See use in ShoppingRun.tsx
-    
-    // Also remove from shopping list
-    batch.update(subRef, { isOnShoppingList: false });
-    
-    // Update Product Last Price if product selected
-    if (item.productId) {
-      const prodRef = doc(db, 'products', item.productId);
-      batch.update(prodRef, { lastPrice: item.unitPrice });
-    }
-  });
+  if (subSnap.exists()) {
+    const subData = subSnap.data();
+    const currentStock = Number(subData.currentStock) || 0;
+    // Reversão: subtrai o que foi somado ou soma o que foi subtraído
+    const reversedStock = currentStock - (Number(movement.quantity) || 0);
+    batch.update(subRef, { currentStock: Math.max(0, reversedStock) });
+  }
   
+  batch.delete(doc(db, 'movements', movement.id));
   await batch.commit();
+};
+
+export const addMeasure = async (userId: string, householdId: string, data: any) => {
+  await addDoc(collection(db, 'measures'), { ...data, userId, householdId });
+};
+
+export const addCategory = async (userId: string, householdId: string, name: string) => {
+  await addDoc(collection(db, 'categories'), { name, userId, householdId });
+};
+
+export const addSubcategory = async (userId: string, householdId: string, data: any) => {
+  await addDoc(collection(db, 'subcategories'), { ...data, userId, householdId });
+};
+
+export const addProduct = async (userId: string, householdId: string, data: any) => {
+  await addDoc(collection(db, 'products'), { ...data, userId, householdId });
+};
+
+export const addToCart = async (userId: string, householdId: string, item: any) => {
+  await addDoc(collection(db, 'cart'), { ...item, userId, householdId });
+};
+
+export const updateCartItem = async (id: string, data: any) => {
+  await updateDoc(doc(db, 'cart', id), data);
+};
+
+export const removeFromCart = async (id: string) => {
+  await deleteDoc(doc(db, 'cart', id));
+};
+
+export const updateStockWithLog = async (userId: string, householdId: string, movement: any, newStock: number) => {
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'subcategories', movement.subcategoryId), { currentStock: newStock });
+  batch.set(doc(collection(db, 'movements')), { ...movement, userId, householdId, dateTime: movement.dateTime || serverTimestamp() });
+  await batch.commit();
+};
+
+export const processPurchase = async (
+  userId: string, 
+  householdId: string, 
+  cart: CartItem[], 
+  subcategories: any[], 
+  products: any[], 
+  measures: any[],
+  purchaseDate: Date,
+  location: string
+) => {
+  const batch = writeBatch(db);
+  const finalTimestamp = Timestamp.fromDate(purchaseDate);
+
+  for (const item of cart) {
+    const sub = subcategories.find(s => s.id === item.subcategoryId);
+    const prod = products.find(p => p.id === item.productId);
+    
+    if (sub) {
+      const itemQty = Number(item.quantity) || 0;
+      const itemPrice = Number(item.unitPrice) || 0;
+      
+      let addedQty = 0;
+      let displaySuffix = '';
+
+      if (prod) {
+        addedQty = itemQty * (Number(prod.unitQuantity) || 1);
+        displaySuffix = `+${itemQty} un de ${prod.name}`;
+      } else {
+        const unitToUse = item.unit || sub.measureUnit;
+        const measureObj = measures.find(m => m.measureUnit === unitToUse);
+        const multiplier = measureObj ? Number(measureObj.measureMultiplier) : 1;
+        addedQty = itemQty * multiplier;
+        displaySuffix = `+${itemQty} ${unitToUse}`;
+      }
+
+      const newStock = (Number(sub.currentStock) || 0) + addedQty;
+      const subRef = doc(db, 'subcategories', sub.id);
+      batch.update(subRef, { currentStock: newStock, isOnShoppingList: false });
+
+      const movRef = doc(collection(db, 'movements'));
+      batch.set(movRef, {
+        userId, 
+        householdId, 
+        type: 'entrada', 
+        origin: 'compra', 
+        dateTime: finalTimestamp,
+        subcategoryId: sub.id, 
+        subcategoryName: sub.name, 
+        categoryId: sub.categoryId, 
+        categoryName: sub.categoryName,
+        productId: prod?.id || null, 
+        productName: prod?.name || 'Genérico',
+        quantity: addedQty, 
+        displayQuantity: displaySuffix,
+        value: itemQty * itemPrice,
+        location: location || 'Não informado'
+      });
+      
+      if (prod) {
+        const prodRef = doc(db, 'products', prod.id);
+        batch.update(prodRef, { lastPrice: itemPrice });
+      }
+    }
+  }
+
+  const q = query(collection(db, 'cart'), where("householdId", "==", householdId));
+  const snap = await getDocs(q);
+  snap.docs.forEach(d => batch.delete(d.ref));
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error("Erro ao executar commit do batch:", error);
+    throw error;
+  }
+};
+
+export const toggleShoppingList = async (id: string, status: boolean) => {
+  await updateDoc(doc(db, 'subcategories', id), { isOnShoppingList: status });
 };

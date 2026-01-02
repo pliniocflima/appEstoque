@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
-import { subscribeToCollection, updateStock } from '../services/db';
+import { subscribeToCollection, updateStockWithLog } from '../services/db';
 import { auth } from '../services/firebase';
 import { Subcategory, Category } from '../types';
 import { Button } from '../components/Button';
 import { Minus, Search } from 'lucide-react';
+import { useApp } from '../App';
 
 const Consumption: React.FC = () => {
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -11,17 +13,15 @@ const Consumption: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [amounts, setAmounts] = useState<{[key: string]: string}>({});
   const user = auth.currentUser;
+  const { profile } = useApp();
 
   useEffect(() => {
-    if (user) {
-      const unsubSub = subscribeToCollection('subcategories', user.uid, (data) => setSubcategories(data as Subcategory[]));
-      const unsubCat = subscribeToCollection('categories', user.uid, (data) => setCategories(data as Category[]));
-      return () => {
-        unsubSub();
-        unsubCat();
-      };
+    if (user && profile) {
+      const unsubSub = subscribeToCollection('subcategories', profile.householdId, (data) => setSubcategories(data as Subcategory[]));
+      const unsubCat = subscribeToCollection('categories', profile.householdId, (data) => setCategories(data as Category[]));
+      return () => { unsubSub(); unsubCat(); };
     }
-  }, [user]);
+  }, [user, profile]);
 
   const filteredItems = subcategories
     .map(sub => ({
@@ -31,34 +31,54 @@ const Consumption: React.FC = () => {
     .filter(item => 
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       item.categoryName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    )
+    .sort((a,b) => a.name.localeCompare(b.name));
 
-  const handleConsume = async (id: string, currentStock: number) => {
-    const amountStr = amounts[id];
+  const getStockColorClass = (item: Subcategory) => {
+    const current = item.currentStock || 0;
+    const min = item.minimumStock || 0;
+    const target = item.targetStock || 0;
+
+    if (current < min) return 'text-red-600 font-bold';
+    if (current < target) return 'text-yellow-600 font-bold';
+    return 'text-green-600 font-medium';
+  };
+
+  const handleConsume = async (item: Subcategory) => {
+    if (!user || !profile) return;
+    const amountStr = amounts[item.id];
     if (!amountStr) return;
     
     const amount = parseFloat(amountStr);
     if (isNaN(amount) || amount <= 0) return;
 
-    const newStock = Math.max(0, currentStock - amount);
+    const newStock = Math.max(0, item.currentStock - amount);
     
-    await updateStock(id, newStock);
+    await updateStockWithLog(user.uid, profile.householdId, {
+      type: 'saída',
+      origin: 'consumo',
+      subcategoryId: item.id,
+      subcategoryName: item.name,
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      quantity: -amount,
+      // Adicionado o sinal de negativo explicitamente para o histórico
+      displayQuantity: `-${amount} ${item.measureUnit}`,
+    }, newStock);
     
-    // Reset input
-    setAmounts(prev => ({ ...prev, [id]: '' }));
+    setAmounts(prev => ({ ...prev, [item.id]: '' }));
   };
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-800">Registrar Consumo</h2>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
         <input
           type="text"
-          placeholder="Buscar item..."
-          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="O que você usou hoje? (ex: Arroz, Detergente...)"
+          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -67,28 +87,34 @@ const Consumption: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="divide-y divide-gray-100">
           {filteredItems.map(item => (
-            <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+            <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
               <div className="flex-1">
-                <div className="font-medium text-gray-900">{item.name}</div>
-                <div className="text-xs text-gray-500">{item.categoryName}</div>
-                <div className={`text-sm mt-1 font-medium ${item.currentStock < item.targetStock ? 'text-red-500' : 'text-green-600'}`}>
-                  Estoque: {item.currentStock} {item.unit}
+                <div className="font-bold text-gray-800">{item.name}</div>
+                <div className="text-xs text-gray-400 uppercase font-semibold">{item.categoryName}</div>
+                <div className={`text-sm mt-1 font-mono ${getStockColorClass(item)}`}>
+                  Disponível: {item.currentStock} {item.measureUnit}
                 </div>
               </div>
               
               <div className="flex items-center space-x-2">
-                <input
-                  type="number"
-                  placeholder="Qtd"
-                  className="w-20 p-2 text-sm border border-gray-300 rounded-lg"
-                  value={amounts[item.id] || ''}
-                  onChange={(e) => setAmounts(prev => ({ ...prev, [item.id]: e.target.value }))}
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    className="w-24 p-2 pr-8 text-sm border border-gray-300 rounded-lg text-right font-bold"
+                    value={amounts[item.id] || ''}
+                    onChange={(e) => setAmounts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase">
+                    {item.measureUnit}
+                  </span>
+                </div>
                 <Button 
-                  onClick={() => handleConsume(item.id, item.currentStock)}
+                  onClick={() => handleConsume(item)}
                   disabled={!amounts[item.id]}
                   variant="danger"
-                  className="p-2"
+                  className="p-2 h-10 w-10 flex items-center justify-center rounded-lg"
+                  title="Registrar Saída"
                 >
                   <Minus size={20} />
                 </Button>
@@ -97,7 +123,9 @@ const Consumption: React.FC = () => {
           ))}
         </div>
         {filteredItems.length === 0 && (
-          <div className="p-8 text-center text-gray-500">Nenhum item encontrado.</div>
+          <div className="p-12 text-center text-gray-400">
+            Nenhum item encontrado na sua despensa.
+          </div>
         )}
       </div>
     </div>
