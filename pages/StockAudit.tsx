@@ -51,7 +51,9 @@ const StockAudit: React.FC = () => {
 
   const filteredItems = subcategories
     .filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = item.name.toLowerCase().includes(searchLower) || 
+                           (item.categoryName || '').toLowerCase().includes(searchLower);
       const matchesCategory = selectedCategory === 'todas' || item.categoryId === selectedCategory;
       return matchesSearch && matchesCategory;
     })
@@ -70,16 +72,24 @@ const StockAudit: React.FC = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="Buscar item para conferir..."
+            placeholder="Buscar item ou categoria..."
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           <select 
-            className="pl-10 pr-8 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none text-sm font-medium"
+            className="pl-10 pr-8 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none text-sm font-medium min-w-[180px]"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
@@ -106,7 +116,7 @@ const StockAudit: React.FC = () => {
                 <tr key={item.id} className={`hover:bg-blue-50/20 transition-colors ${adjustingId === item.id ? 'bg-blue-50/50' : ''}`}>
                   <td className="px-6 py-4">
                     <div className="font-bold text-gray-800">{item.name}</div>
-                    <div className="text-[10px] text-gray-400 uppercase font-medium">{item.categoryName}</div>
+                    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">{item.categoryName}</div>
                   </td>
                   <td className="px-6 py-4">
                     {adjustingId === item.id ? (
