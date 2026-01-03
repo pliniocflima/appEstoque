@@ -29,7 +29,6 @@ export interface Subcategory {
   productsQuantity: number;
   userId: string;
   householdId: string;
-  isOnShoppingList?: boolean;
 }
 
 export interface Product {

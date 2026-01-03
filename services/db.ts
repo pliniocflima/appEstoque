@@ -143,7 +143,7 @@ export const processPurchase = async (
 
       const newStock = (Number(sub.currentStock) || 0) + addedQty;
       const subRef = doc(db, 'subcategories', sub.id);
-      batch.update(subRef, { currentStock: newStock, isOnShoppingList: false });
+      batch.update(subRef, { currentStock: newStock });
 
       const movRef = doc(collection(db, 'movements'));
       batch.set(movRef, {
@@ -181,8 +181,4 @@ export const processPurchase = async (
     console.error("Erro ao executar commit do batch:", error);
     throw error;
   }
-};
-
-export const toggleShoppingList = async (id: string, status: boolean) => {
-  await updateDoc(doc(db, 'subcategories', id), { isOnShoppingList: status });
 };

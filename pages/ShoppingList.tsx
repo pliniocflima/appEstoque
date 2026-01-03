@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { subscribeToCollection, toggleShoppingList, addToCart, removeFromCart } from '../services/db';
+import { subscribeToCollection, addToCart, removeFromCart } from '../services/db';
 import { auth } from '../services/firebase';
 import { Subcategory, Category, CartItem } from '../types';
 import { Button } from '../components/Button';
@@ -66,7 +66,6 @@ const ShoppingList: React.FC = () => {
 
   const handleToggle = async (item: Subcategory) => {
     const currentlyInCart = isInCart(item.id);
-    await toggleShoppingList(item.id, !currentlyInCart);
 
     if (!currentlyInCart && user && profile) {
       await addToCart(user.uid, profile.householdId, {
