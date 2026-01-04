@@ -20,7 +20,7 @@ interface DeleteState {
 
 const Management: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('subcategories');
-  const { categories, subcategories, products, measures, loading } = useData();
+  const { categories, subcategories, products, measures, movements, cart, loading } = useData();
   const { profile } = useApp();
   const user = auth.currentUser;
 
@@ -171,12 +171,32 @@ const Management: React.FC = () => {
       const sub = subcategories.find(s => s.id === id);
       const hasProd = products.some(p => p.subcategoryId === id);
       const hasStock = (sub?.currentStock || 0) > 0;
+      const hasMovements = movements.some(m => m.subcategoryId === id);
+      const inCart = cart.some(c => c.subcategoryId === id);
+
       if (hasProd) {
         blocked = true;
         reason = 'Este item possui produtos específicos vinculados.';
       } else if (hasStock) {
         blocked = true;
         reason = `Este item ainda possui estoque.`;
+      } else if (hasMovements) {
+        blocked = true;
+        reason = 'Este item possui histórico de movimentações e não pode ser excluído por integridade de dados.';
+      } else if (inCart) {
+        blocked = true;
+        reason = 'Este item está atualmente na lista ou carrinho de compras.';
+      }
+    } else if (type === 'product') {
+      const hasMovements = movements.some(m => m.productId === id);
+      const inCart = cart.some(c => c.productId === id);
+
+      if (hasMovements) {
+        blocked = true;
+        reason = 'Este produto possui histórico de movimentações no estoque e não pode ser removido.';
+      } else if (inCart) {
+        blocked = true;
+        reason = 'Este produto está presente em um carrinho de compras ativo.';
       }
     }
 
@@ -277,7 +297,6 @@ const Management: React.FC = () => {
             </form>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Cast filteredData to Subcategory[] to fix type errors on properties unique to Subcategory */}
               {(filteredData as Subcategory[]).map(s => (
                 <div key={s.id} className="p-4 border rounded-xl hover:bg-gray-50 flex flex-col justify-between transition-colors shadow-sm group">
                   <div>
@@ -325,7 +344,6 @@ const Management: React.FC = () => {
               <Button type="submit"><Plus size={18} /></Button>
             </form>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Cast filteredData to Category[] */}
               {(filteredData as Category[]).map(c => (
                 <div key={c.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors shadow-sm group">
                   {editingId === c.id ? (
@@ -379,7 +397,6 @@ const Management: React.FC = () => {
             </form>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Cast filteredData to Product[] to fix type errors on properties unique to Product */}
               {(filteredData as Product[]).map(p => (
                 <div key={p.id} className="p-4 border rounded-xl hover:bg-gray-50 flex flex-col justify-between transition-colors shadow-sm group">
                   <div className="flex justify-between items-start gap-2">

@@ -3,7 +3,7 @@ import React, { useEffect, useState, createContext, useContext, useMemo, useRef 
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { auth } from './services/firebase';
 import { getOrCreateProfile, subscribeToCollection } from './services/db';
-import { UserProfile, Category, Subcategory, Product, Measure, CartItem } from './types';
+import { UserProfile, Category, Subcategory, Product, Measure, CartItem, Movement } from './types';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -23,6 +23,7 @@ interface DataContextType {
   products: Product[];
   measures: Measure[];
   cart: CartItem[];
+  movements: Movement[];
   loading: boolean;
   syncing: boolean;
   hasPending: boolean;
@@ -40,6 +41,7 @@ const DataContext = createContext<DataContextType>({
   products: [],
   measures: [],
   cart: [],
+  movements: [],
   loading: true,
   syncing: false,
   hasPending: false
@@ -49,7 +51,7 @@ const AppContext = createContext<AppContextType>({
   profile: null, 
   refreshProfile: async () => {},
   data: { 
-    categories: [], subcategories: [], products: [], measures: [], cart: [], 
+    categories: [], subcategories: [], products: [], measures: [], cart: [], movements: [],
     loading: true, syncing: false, hasPending: false 
   }
 });
@@ -76,6 +78,7 @@ const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [measures, setMeasures] = useState<Measure[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [movements, setMovements] = useState<Movement[]>([]);
   
   // Status State
   const [dataLoading, setDataLoading] = useState(true);
@@ -153,6 +156,7 @@ const App: React.FC = () => {
       });
 
       const unsubMov = subscribeToCollection('movements', hId, (d, meta) => {
+        setMovements(d as Movement[]);
         updatePendingState('movements', meta.hasPendingWrites);
       });
 
@@ -173,10 +177,11 @@ const App: React.FC = () => {
     products,
     measures,
     cart,
+    movements,
     loading: dataLoading,
     syncing,
     hasPending
-  }), [categories, subcategories, products, measures, cart, dataLoading, syncing, hasPending]);
+  }), [categories, subcategories, products, measures, cart, movements, dataLoading, syncing, hasPending]);
 
   if (authLoading) return <Loading />;
 
