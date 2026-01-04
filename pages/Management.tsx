@@ -47,7 +47,13 @@ const Management: React.FC = () => {
   const [deleteRequest, setDeleteRequest] = useState<DeleteState | null>(null);
 
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.name.localeCompare(b.name)), [categories]);
-  const sortedMeasures = useMemo(() => [...measures].sort((a, b) => a.measureUnit.localeCompare(b.measureUnit)), [measures]);
+  
+  // Ordenação das medidas: Primeiro por Controle (measureControl) e depois por Multiplicador (measureMultiplier)
+  const sortedMeasures = useMemo(() => [...measures].sort((a, b) => {
+    const ctrlCompare = a.measureControl.localeCompare(b.measureControl);
+    if (ctrlCompare !== 0) return ctrlCompare;
+    return a.measureMultiplier - b.measureMultiplier;
+  }), [measures]);
   
   // Filtros dinâmicos baseados na aba
   const filteredData = useMemo(() => {
@@ -263,7 +269,9 @@ const Management: React.FC = () => {
               </select>
               <select className="border p-2 rounded-lg text-sm" value={newSubMeasureId} onChange={e => setNewSubMeasureId(e.target.value)} required>
                 <option value="">Medida...</option>
-                {sortedMeasures.map(m => <option key={m.id} value={m.id}>{m.measureUnit}</option>)}
+                {sortedMeasures.map(m => (
+                  <option key={m.id} value={m.id}>{m.measureUnit} ({m.measureControl})</option>
+                ))}
               </select>
               <Button type="submit" className="md:col-span-3 py-2 text-sm">Cadastrar Novo Item</Button>
             </form>
@@ -363,7 +371,7 @@ const Management: React.FC = () => {
                 >
                   <option value="">{selectedSubForNewProduct ? `Unid (${selectedSubForNewProduct.measureUnit})` : 'Unidade...'}</option>
                   {compatibleMeasuresForNewProduct.map(m => (
-                    <option key={m.id} value={m.id}>{m.measureUnit}</option>
+                    <option key={m.id} value={m.id}>{m.measureUnit} ({m.measureControl})</option>
                   ))}
                 </select>
               </div>
