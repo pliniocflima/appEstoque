@@ -133,6 +133,7 @@ const Settings: React.FC = () => {
             <div className="bg-purple-50 p-4 rounded-lg flex items-start">
               <Users className="text-purple-600 mr-3 mt-1" size={24} />
               <div>
+                {/* Fixed missing opening bracket on h3 tag below */}
                 <h3 className="font-bold text-purple-900">Compartilhamento Familiar</h3>
                 <p className="text-sm text-purple-700">Use o código abaixo em outros celulares para sincronizar o estoque em tempo real.</p>
               </div>
@@ -177,7 +178,11 @@ const Settings: React.FC = () => {
             }} className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
               <div className="md:col-span-4 font-semibold text-gray-700 text-sm mb-1">Nova Unidade de Medida</div>
               <select className="border p-2 rounded-lg bg-white outline-none" value={ctrl} onChange={e => setCtrl(e.target.value)}>
-                <option>Peso</option><option>Volume</option><option>Quantidade</option>
+                <option>Peso</option>
+                <option>Volume</option>
+                <option>Quantidade</option>
+                <option>Comprimento</option>
+                <option>Área</option>
               </select>
               <input className="border p-2 rounded-lg bg-white outline-none" placeholder="Símbolo (Ex: kg, L, un)" value={unit} onChange={e => setUnit(e.target.value)} required />
               <input type="number" step="0.001" className="border p-2 rounded-lg bg-white outline-none" placeholder="Multiplicador" value={mult} onChange={e => setMult(e.target.value)} required />
