@@ -1,11 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
-import { subscribeToCollection, addCategory, addSubcategory, addProduct, deleteItem, updateItem } from '../services/db';
+import React, { useState, useMemo } from 'react';
+import { addCategory, addSubcategory, addProduct, deleteItem, updateItem } from '../services/db';
 import { auth } from '../services/firebase';
-import { Subcategory, Category, Measure, Product, Movement } from '../types';
+import { useApp, useData } from '../App';
 import { Button } from '../components/Button';
-import { Trash2, Plus, Edit2, Check, X, Package, Tag, Layers, AlertCircle, ShieldAlert } from 'lucide-react';
-import { useApp } from '../App';
+import { Trash2, Plus, Edit2, Check, X, Package, Tag, Layers, AlertCircle, ShieldAlert, Search, Filter } from 'lucide-react';
+// Import missing types for casting to fix union type errors
+import { Category, Subcategory, Product } from '../types';
 
 type Tab = 'categories' | 'subcategories' | 'products';
 
@@ -19,13 +20,13 @@ interface DeleteState {
 
 const Management: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('subcategories');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [measures, setMeasures] = useState<Measure[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [movements, setMovements] = useState<Movement[]>([]);
-  const user = auth.currentUser;
+  const { categories, subcategories, products, measures, loading } = useData();
   const { profile } = useApp();
+  const user = auth.currentUser;
+
+  // Search & Filter Global State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('todas');
 
   // Forms State
   const [newCatName, setNewCatName] = useState('');
@@ -34,40 +35,69 @@ const Management: React.FC = () => {
   const [newSubMeasureId, setNewSubMeasureId] = useState('');
   const [newProdName, setNewProdName] = useState('');
   const [newProdSubId, setNewProdSubId] = useState('');
+  const [newProdMeasureId, setNewProdMeasureId] = useState('');
   const [newProdQty, setNewProdQty] = useState('1');
 
   // Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editCatId, setEditCatId] = useState('');
-  const [editMeasureId, setEditMeasureId] = useState('');
-  const [editSubId, setEditSubId] = useState('');
-  const [editQty, setEditQty] = useState('');
 
   // Delete Modal State
   const [deleteRequest, setDeleteRequest] = useState<DeleteState | null>(null);
 
-  useEffect(() => {
-    if (user && profile) {
-      const u1 = subscribeToCollection('categories', profile.householdId, (d) => setCategories(d as Category[]));
-      const u2 = subscribeToCollection('subcategories', profile.householdId, (d) => setSubcategories(d as Subcategory[]));
-      const u3 = subscribeToCollection('measures', profile.householdId, (d) => setMeasures(d as Measure[]));
-      const u4 = subscribeToCollection('products', profile.householdId, (d) => setProducts(d as Product[]));
-      const u5 = subscribeToCollection('movements', profile.householdId, (d) => setMovements(d as Movement[]));
-      return () => { u1(); u2(); u3(); u4(); u5(); };
+  const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.name.localeCompare(b.name)), [categories]);
+  const sortedMeasures = useMemo(() => [...measures].sort((a, b) => a.measureUnit.localeCompare(b.measureUnit)), [measures]);
+  
+  // Filtros dinâmicos baseados na aba
+  const filteredData = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
+    
+    if (activeTab === 'categories') {
+      return sortedCategories.filter(c => c.name.toLowerCase().includes(searchLower));
     }
-  }, [user, profile]);
+    
+    if (activeTab === 'subcategories') {
+      return subcategories
+        .filter(s => {
+          const matchesSearch = s.name.toLowerCase().includes(searchLower) || (s.categoryName || '').toLowerCase().includes(searchLower);
+          const matchesCategory = selectedCategory === 'todas' || s.categoryId === selectedCategory;
+          return matchesSearch && matchesCategory;
+        })
+        .sort((a, b) => {
+          const catCompare = (a.categoryName || '').localeCompare(b.categoryName || '');
+          if (catCompare !== 0) return catCompare;
+          return a.name.localeCompare(b.name);
+        });
+    }
 
-  const sortedCategories = [...categories].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedMeasures = [...measures].sort((a, b) => a.measureUnit.localeCompare(b.measureUnit));
-  const sortedSubOptions = [...subcategories].sort((a, b) => {
-    const catCompare = (a.categoryName || '').localeCompare(b.categoryName || '');
-    return catCompare !== 0 ? catCompare : a.name.localeCompare(b.name);
-  });
+    if (activeTab === 'products') {
+      return products
+        .filter(p => {
+          const matchesSearch = p.name.toLowerCase().includes(searchLower) || 
+                               (p.subcategoryName || '').toLowerCase().includes(searchLower) ||
+                               (p.categoryName || '').toLowerCase().includes(searchLower);
+          const matchesCategory = selectedCategory === 'todas' || p.categoryId === selectedCategory;
+          return matchesSearch && matchesCategory;
+        })
+        .sort((a, b) => {
+          const catCompare = (a.categoryName || '').localeCompare(b.categoryName || '');
+          if (catCompare !== 0) return catCompare;
+          const subCompare = (a.subcategoryName || '').localeCompare(b.subcategoryName || '');
+          if (subCompare !== 0) return subCompare;
+          return a.name.localeCompare(b.name);
+        });
+    }
+    
+    return [];
+  }, [activeTab, searchTerm, selectedCategory, sortedCategories, subcategories, products]);
 
   const selectedSubForNewProduct = subcategories.find(s => s.id === newProdSubId);
+  const compatibleMeasuresForNewProduct = useMemo(() => {
+    if (!selectedSubForNewProduct) return [];
+    return sortedMeasures.filter(m => m.measureControl === selectedSubForNewProduct.measureControl);
+  }, [selectedSubForNewProduct, sortedMeasures]);
 
-  // Handlers
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (user && profile && newCatName) {
@@ -90,8 +120,7 @@ const Management: React.FC = () => {
         measureUnit: msr.measureUnit,
         minimumStock: 0,
         targetStock: 0,
-        currentStock: 0,
-        productsQuantity: 0
+        currentStock: 0
       });
       setNewSubName(''); setNewSubCatId(''); setNewSubMeasureId('');
     }
@@ -100,23 +129,25 @@ const Management: React.FC = () => {
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const sub = subcategories.find(s => s.id === newProdSubId);
-    if (user && profile && newProdName && sub) {
-      const nameInApp = `${newProdName} (${newProdQty}${sub.measureUnit})`;
+    const msr = measures.find(m => m.id === (newProdMeasureId || sub?.measureId));
+    
+    if (user && profile && newProdName && sub && msr) {
+      const nameInApp = `${newProdName} (${newProdQty}${msr.measureUnit})`;
       await addProduct(user.uid, profile.householdId, {
         name: newProdName,
         subcategoryId: sub.id,
         subcategoryName: sub.name,
         categoryId: sub.categoryId,
         categoryName: sub.categoryName,
-        measureId: sub.measureId,
-        measureControl: sub.measureControl,
-        measureUnit: sub.measureUnit,
+        measureId: msr.id,
+        measureControl: msr.measureControl,
+        measureUnit: msr.measureUnit,
         unitQuantity: Number(newProdQty),
         nameInApp,
         allowed: true,
         comments: ''
       });
-      setNewProdName(''); setNewProdSubId(''); setNewProdQty('1');
+      setNewProdName(''); setNewProdSubId(''); setNewProdQty('1'); setNewProdMeasureId('');
     }
   };
 
@@ -128,29 +159,18 @@ const Management: React.FC = () => {
       const hasSub = subcategories.some(s => s.categoryId === id);
       if (hasSub) {
         blocked = true;
-        reason = 'Esta categoria possui itens vinculados. Remova ou mova os itens antes de excluir.';
+        reason = 'Esta categoria possui itens vinculados.';
       }
     } else if (type === 'subcategory') {
       const sub = subcategories.find(s => s.id === id);
       const hasProd = products.some(p => p.subcategoryId === id);
       const hasStock = (sub?.currentStock || 0) > 0;
-      const hasHistory = movements.some(m => m.subcategoryId === id);
-      
       if (hasProd) {
         blocked = true;
-        reason = 'Este item possui produtos específicos vinculados. Exclua os produtos primeiro.';
+        reason = 'Este item possui produtos específicos vinculados.';
       } else if (hasStock) {
         blocked = true;
-        reason = `Este item ainda possui estoque (${sub?.currentStock} ${sub?.measureUnit}). Zere o estoque antes de tentar excluir.`;
-      } else if (hasHistory) {
-        blocked = true;
-        reason = 'Este item possui registros no histórico de movimentações (compras ou consumos). Para manter a integridade dos seus relatórios, ele não pode ser excluído.';
-      }
-    } else if (type === 'product') {
-      const hasHistory = movements.some(m => m.productId === id);
-      if (hasHistory) {
-        blocked = true;
-        reason = 'Este produto específico já foi utilizado em compras registradas no histórico. Ele não pode ser removido para não invalidar os registros passados.';
+        reason = `Este item ainda possui estoque.`;
       }
     }
 
@@ -167,27 +187,21 @@ const Management: React.FC = () => {
   const saveEditCategory = async (id: string) => {
     if (!editName.trim()) return;
     await updateItem('categories', id, { name: editName });
-    const subsToUpdate = subcategories.filter(s => s.categoryId === id);
-    for (const sub of subsToUpdate) await updateItem('subcategories', sub.id, { categoryName: editName });
-    const prodsToUpdate = products.filter(p => p.categoryId === id);
-    for (const prod of prodsToUpdate) await updateItem('products', prod.id, { categoryName: editName });
     setEditingId(null);
   };
 
   const saveEditSubcategory = async (id: string) => {
     const cat = categories.find(c => c.id === editCatId);
-    const msr = measures.find(m => m.id === editMeasureId);
-    if (!cat || !msr) return;
+    if (!cat) return;
     await updateItem('subcategories', id, {
       name: editName,
       categoryId: cat.id,
-      categoryName: cat.name,
-      measureId: msr.id,
-      measureControl: msr.measureControl,
-      measureUnit: msr.measureUnit
+      categoryName: cat.name
     });
     setEditingId(null);
   };
+
+  if (loading) return <div className="p-8 text-center animate-pulse">Carregando dados de gestão...</div>;
 
   return (
     <div className="space-y-6">
@@ -197,7 +211,7 @@ const Management: React.FC = () => {
         {(['categories', 'subcategories', 'products'] as Tab[]).map((tab) => (
           <button
             key={tab}
-            onClick={() => { setActiveTab(tab); setEditingId(null); }}
+            onClick={() => { setActiveTab(tab); setEditingId(null); setSearchTerm(''); setSelectedCategory('todas'); }}
             className={`px-4 py-2 rounded-lg font-medium transition-all text-sm flex items-center gap-2 ${
               activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -210,89 +224,114 @@ const Management: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
+      {/* Barra de Pesquisa e Filtro Inteligente */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder={`Pesquisar em ${activeTab === 'subcategories' ? 'itens' : activeTab === 'products' ? 'produtos' : 'categorias'}...`}
+            className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={16}/></button>}
+        </div>
+        {activeTab !== 'categories' && (
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+            <select 
+              className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none text-sm font-medium min-w-[160px]"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              <option value="todas">Todas Categorias</option>
+              {sortedCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 min-h-[400px]">
         {activeTab === 'subcategories' && (
           <div className="p-6 space-y-6">
-            <form onSubmit={handleAddSubcategory} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="md:col-span-3 font-semibold text-gray-700 text-sm">Novo Item (Ex: Arroz, Feijão, Sabão)</div>
-              <input className="border p-2 rounded-lg" placeholder="Nome do Item" value={newSubName} onChange={e => setNewSubName(e.target.value)} required />
-              <select className="border p-2 rounded-lg" value={newSubCatId} onChange={e => setNewSubCatId(e.target.value)} required>
+            <form onSubmit={handleAddSubcategory} className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <input className="border p-2 rounded-lg text-sm" placeholder="Nome do Item" value={newSubName} onChange={e => setNewSubName(e.target.value)} required />
+              <select className="border p-2 rounded-lg text-sm" value={newSubCatId} onChange={e => setNewSubCatId(e.target.value)} required>
                 <option value="">Categoria...</option>
                 {sortedCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <select className="border p-2 rounded-lg" value={newSubMeasureId} onChange={e => setNewSubMeasureId(e.target.value)} required>
-                <option value="">Unidade de Medida...</option>
-                {sortedMeasures.map(m => <option key={m.id} value={m.id}>{m.measureUnit} ({m.measureControl})</option>)}
+              <select className="border p-2 rounded-lg text-sm" value={newSubMeasureId} onChange={e => setNewSubMeasureId(e.target.value)} required>
+                <option value="">Medida...</option>
+                {sortedMeasures.map(m => <option key={m.id} value={m.id}>{m.measureUnit}</option>)}
               </select>
-              <Button type="submit" className="md:col-span-3">Cadastrar Item</Button>
+              <Button type="submit" className="md:col-span-3 py-2 text-sm">Cadastrar Novo Item</Button>
             </form>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="text-gray-400 text-xs uppercase border-b">
-                  <tr><th className="pb-3">Item</th><th className="pb-3">Categoria</th><th className="pb-3">Unidade</th><th className="pb-3"></th></tr>
-                </thead>
-                <tbody className="divide-y">
-                  {[...subcategories].sort((a,b) => a.name.localeCompare(b.name)).map(s => (
-                    <tr key={s.id} className={`hover:bg-gray-50 ${editingId === s.id ? 'bg-blue-50/30' : ''}`}>
-                      <td className="py-4 font-medium">
-                        {editingId === s.id ? <input className="border p-1 rounded w-full" value={editName} onChange={e => setEditName(e.target.value)} /> : s.name}
-                      </td>
-                      <td className="py-4 text-sm">
-                        {editingId === s.id ? (
-                          <select className="border p-1 rounded w-full" value={editCatId} onChange={e => setEditCatId(e.target.value)}>
-                            {sortedCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
-                        ) : s.categoryName}
-                      </td>
-                      <td className="py-4 text-sm text-gray-500">{s.measureUnit}</td>
-                      <td className="py-4 text-right">
-                        <div className="flex justify-end gap-1">
-                          {editingId === s.id ? (
-                            <>
-                              <button onClick={() => saveEditSubcategory(s.id)} className="text-green-600 p-1"><Check size={18}/></button>
-                              <button onClick={() => setEditingId(null)} className="text-gray-400 p-1"><X size={18}/></button>
-                            </>
-                          ) : (
-                            <>
-                              <button onClick={() => { setEditingId(s.id); setEditName(s.name); setEditCatId(s.categoryId); setEditMeasureId(s.measureId); }} className="text-gray-400 hover:text-blue-600 p-1"><Edit2 size={16}/></button>
-                              <button onClick={() => initiateDelete('subcategory', s.id, s.name)} className="text-gray-400 hover:text-red-500 p-1"><Trash2 size={16}/></button>
-                            </>
-                          )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Cast filteredData to Subcategory[] to fix type errors on properties unique to Subcategory */}
+              {(filteredData as Subcategory[]).map(s => (
+                <div key={s.id} className="p-4 border rounded-xl hover:bg-gray-50 flex flex-col justify-between transition-colors shadow-sm group">
+                  <div>
+                    <div className="flex justify-between items-start gap-2 mb-1">
+                      {editingId === s.id ? (
+                        <input className="flex-1 border p-1 rounded text-sm mb-1" value={editName} onChange={e => setEditName(e.target.value)} autoFocus />
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-gray-800 text-sm">{s.name}</span>
+                          <span className="bg-gray-100 text-gray-500 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">{s.categoryName}</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                      <div className="flex gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
+                         {editingId === s.id ? (
+                          <>
+                            <button onClick={() => saveEditSubcategory(s.id)} className="text-green-600 p-1"><Check size={18}/></button>
+                            <button onClick={() => setEditingId(null)} className="text-gray-400 p-1"><X size={18}/></button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => { setEditingId(s.id); setEditName(s.name); setEditCatId(s.categoryId); }} className="text-gray-300 hover:text-blue-600 p-1"><Edit2 size={16}/></button>
+                            <button onClick={() => initiateDelete('subcategory', s.id, s.name)} className="text-gray-300 hover:text-red-500 p-1"><Trash2 size={16}/></button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {editingId === s.id ? (
+                      <select className="border p-1 rounded text-[10px] w-full mt-1" value={editCatId} onChange={e => setEditCatId(e.target.value)}>
+                        {sortedCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    ) : (
+                      <p className="text-[10px] text-gray-400 font-bold tracking-tight">{s.measureControl}: {s.measureUnit}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
         {activeTab === 'categories' && (
           <div className="p-6 space-y-6">
-            <form onSubmit={handleAddCategory} className="flex gap-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <input className="flex-1 border p-2 rounded-lg" placeholder="Nome da Categoria (Ex: Limpeza, Matinais)" value={newCatName} onChange={e => setNewCatName(e.target.value)} required />
-              <Button type="submit"><Plus size={18} className="mr-1" /> Criar</Button>
+            <form onSubmit={handleAddCategory} className="flex gap-2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <input className="flex-1 border p-2 rounded-lg text-sm" placeholder="Nome da Categoria..." value={newCatName} onChange={e => setNewCatName(e.target.value)} required />
+              <Button type="submit"><Plus size={18} /></Button>
             </form>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedCategories.map(c => (
-                <div key={c.id} className={`flex items-center justify-between p-4 border rounded-xl transition-colors ${editingId === c.id ? 'bg-blue-50/30 border-blue-200 shadow-sm' : 'hover:bg-gray-50'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Cast filteredData to Category[] */}
+              {(filteredData as Category[]).map(c => (
+                <div key={c.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors shadow-sm group">
                   {editingId === c.id ? (
-                    <input className="flex-1 border p-1 rounded mr-2 focus:ring-1 focus:ring-blue-400 outline-none font-semibold text-gray-700" value={editName} onChange={e => setEditName(e.target.value)} autoFocus />
+                    <input className="flex-1 border p-1 rounded mr-2 text-sm" value={editName} onChange={e => setEditName(e.target.value)} autoFocus />
                   ) : (
-                    <span className="font-semibold text-gray-700">{c.name}</span>
+                    <span className="font-bold text-gray-700 text-sm">{c.name}</span>
                   )}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
                     {editingId === c.id ? (
-                      <>
-                        <button onClick={() => saveEditCategory(c.id)} className="text-green-600 p-1 hover:bg-green-50 rounded transition-colors"><Check size={18}/></button>
-                        <button onClick={() => setEditingId(null)} className="text-gray-400 p-1 hover:bg-gray-100 rounded transition-colors"><X size={18}/></button>
-                      </>
+                      <button onClick={() => saveEditCategory(c.id)} className="text-green-600 p-1"><Check size={18}/></button>
                     ) : (
                       <>
-                        <button onClick={() => { setEditingId(c.id); setEditName(c.name); }} className="text-gray-300 hover:text-blue-600 p-1 transition-colors"><Edit2 size={16}/></button>
-                        <button onClick={() => initiateDelete('category', c.id, c.name)} className="text-gray-300 hover:text-red-500 transition-colors p-1"><Trash2 size={16}/></button>
+                        <button onClick={() => { setEditingId(c.id); setEditName(c.name); }} className="text-gray-300 hover:text-blue-600 p-1"><Edit2 size={16}/></button>
+                        <button onClick={() => initiateDelete('category', c.id, c.name)} className="text-gray-300 hover:text-red-500 p-1"><Trash2 size={16}/></button>
                       </>
                     )}
                   </div>
@@ -304,69 +343,67 @@ const Management: React.FC = () => {
 
         {activeTab === 'products' && (
           <div className="p-6 space-y-6">
-            <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="md:col-span-3 font-semibold text-gray-700 text-sm">Novo Produto (Produto específico)</div>
-              <input className="border p-2 rounded-lg" placeholder="Produto (Ex: Camil, Omo, Nestlé)" value={newProdName} onChange={e => setNewProdName(e.target.value)} required />
-              <select className="border p-2 rounded-lg" value={newProdSubId} onChange={e => setNewProdSubId(e.target.value)} required>
-                <option value="">Vincular ao Item...</option>
-                {sortedSubOptions.map(s => <option key={s.id} value={s.id}>{s.name} ({s.categoryName})</option>)}
-              </select>
-              <div className="relative flex items-center">
-                <input type="number" step="0.01" className={`border p-2 rounded-lg w-full ${selectedSubForNewProduct ? 'pr-12' : ''}`} placeholder="Peso/Qtd Emb." value={newProdQty} onChange={e => setNewProdQty(e.target.value)} required />
-                {selectedSubForNewProduct && <span className="absolute right-3 text-xs font-bold text-gray-400 pointer-events-none">{selectedSubForNewProduct.measureUnit}</span>}
+            <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="md:col-span-1">
+                <input className="w-full border p-2 rounded-lg text-sm" placeholder="Marca/Produto (ex: Tio João)" value={newProdName} onChange={e => setNewProdName(e.target.value)} required />
               </div>
-              <Button type="submit" className="md:col-span-3">Cadastrar Produto</Button>
-            </form>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="text-gray-400 text-xs uppercase border-b">
-                  <tr><th className="pb-3">Produto</th><th className="pb-3">Item</th><th className="pb-3">Emb. Padrão</th><th className="pb-3"></th></tr>
-                </thead>
-                <tbody className="divide-y">
-                  {[...products].sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="py-4 font-medium">{p.name}</td>
-                      <td className="py-4 text-sm text-gray-500">{p.subcategoryName}</td>
-                      <td className="py-4 text-sm font-mono">{p.unitQuantity} {p.measureUnit}</td>
-                      <td className="py-4 text-right">
-                        <button onClick={() => initiateDelete('product', p.id, p.name)} className="text-gray-300 hover:text-red-500 p-1"><Trash2 size={16}/></button>
-                      </td>
-                    </tr>
+              <div className="md:col-span-1">
+                <select className="w-full border p-2 rounded-lg text-sm" value={newProdSubId} onChange={e => setNewProdSubId(e.target.value)} required>
+                  <option value="">Item Pai...</option>
+                  {subcategories.sort((a,b) => a.name.localeCompare(b.name)).map(s => <option key={s.id} value={s.id}>{s.name} ({s.categoryName})</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-1 flex gap-1">
+                <input type="number" step="0.01" className="flex-1 border p-2 rounded-lg text-sm" placeholder="Qtd Emb." value={newProdQty} onChange={e => setNewProdQty(e.target.value)} required />
+                <select 
+                  className="flex-1 border p-2 rounded-lg text-[10px] font-bold" 
+                  value={newProdMeasureId} 
+                  onChange={e => setNewProdMeasureId(e.target.value)}
+                  disabled={!selectedSubForNewProduct}
+                >
+                  <option value="">{selectedSubForNewProduct ? `Unid (${selectedSubForNewProduct.measureUnit})` : 'Unidade...'}</option>
+                  {compatibleMeasuresForNewProduct.map(m => (
+                    <option key={m.id} value={m.id}>{m.measureUnit}</option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+              </div>
+              <Button type="submit" className="md:col-span-1 py-2 text-sm">Cadastrar</Button>
+            </form>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Cast filteredData to Product[] to fix type errors on properties unique to Product */}
+              {(filteredData as Product[]).map(p => (
+                <div key={p.id} className="p-4 border rounded-xl hover:bg-gray-50 flex flex-col justify-between transition-colors shadow-sm group">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-gray-800 text-sm truncate">{p.nameInApp}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-gray-400 font-bold tracking-tight">{p.subcategoryName}</span>
+                        <span className="bg-gray-100 text-gray-400 text-[7px] px-1 py-0.5 rounded font-bold uppercase shrink-0">{p.categoryName}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => initiateDelete('product', p.id, p.name)} className="text-gray-300 hover:text-red-500 p-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* CUSTOM DELETE MODAL */}
       {deleteRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in duration-200">
-            <div className="p-6 text-center">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${deleteRequest.blocked ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
-                {deleteRequest.blocked ? <ShieldAlert size={32} /> : <AlertCircle size={32} />}
-              </div>
-              
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {deleteRequest.blocked ? 'Não é possível excluir' : 'Confirmar Exclusão'}
-              </h3>
-              
-              <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                {deleteRequest.blocked 
-                  ? deleteRequest.reason 
-                  : <>Tem certeza que deseja excluir <strong>"{deleteRequest.name}"</strong>? Esta ação não pode ser desfeita.</>}
-              </p>
-
-              <div className="space-y-3">
-                {!deleteRequest.blocked && (
-                  <Button fullWidth variant="danger" onClick={confirmDelete} className="py-3 font-bold">Excluir Agora</Button>
-                )}
-                <button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors">
-                  {deleteRequest.blocked ? 'Entendido' : 'Cancelar'}
-                </button>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${deleteRequest.blocked ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
+              {deleteRequest.blocked ? <ShieldAlert size={32} /> : <AlertCircle size={32} />}
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">{deleteRequest.blocked ? 'Ação Bloqueada' : 'Confirmar'}</h3>
+            <p className="text-sm text-gray-500 mb-6">{deleteRequest.blocked ? deleteRequest.reason : `Excluir "${deleteRequest.name}"?`}</p>
+            <div className="space-y-3">
+              {!deleteRequest.blocked && <Button fullWidth variant="danger" onClick={confirmDelete}>Excluir Agora</Button>}
+              <button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-sm font-medium text-gray-400">Fechar</button>
             </div>
           </div>
         </div>

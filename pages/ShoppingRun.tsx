@@ -4,7 +4,7 @@ import { subscribeToCollection, processPurchase, updateCartItem, removeFromCart 
 import { auth } from '../services/firebase';
 import { Subcategory, Product, CartItem, Measure, Category } from '../types';
 import { Button } from '../components/Button';
-import { Trash2, Save, ShoppingBag, Loader2, MapPin, Calendar, CheckCircle2, XCircle, Filter, Search, X, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Trash2, Save, ShoppingBag, Loader2, MapPin, Calendar, CheckCircle2, XCircle, Filter, Search, X, AlertTriangle, ShieldCheck, Scale } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../App';
 
@@ -122,7 +122,17 @@ const ShoppingRun: React.FC = () => {
     const gap = Math.max(0, (sub.targetStock || 0) - (sub.currentStock || 0));
     if (gap <= 0) return 0;
 
-    return Math.ceil(gap / prod.unitQuantity);
+    // Conversão de unidades na sugestão
+    const prodMeasure = measures.find(m => m.id === prod.measureId);
+    const subMeasure = measures.find(m => m.id === sub.measureId);
+    
+    const mProd = prodMeasure ? Number(prodMeasure.measureMultiplier) : 1;
+    const mSub = subMeasure ? Number(subMeasure.measureMultiplier) : 1;
+
+    // Tamanho real da embalagem na unidade do Item
+    const effectivePackSizeInItemUnit = (prod.unitQuantity * mProd) / mSub;
+    
+    return Math.ceil(gap / effectivePackSizeInItemUnit);
   };
 
   const executeFinish = async () => {
@@ -359,6 +369,19 @@ const ShoppingRun: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Exibição de Conversão Se Unidades Diferentes */}
+                {item.productId && (
+                  <div className="mt-3 flex items-center gap-2 text-[10px] text-gray-500 font-medium italic">
+                    <Scale size={12} />
+                    <span>
+                      {products.find(p => p.id === item.productId)?.measureUnit !== sub?.measureUnit 
+                        ? `Conversão: Cada embalagem adicionará ${(Number(products.find(p => p.id === item.productId)?.unitQuantity) * (Number(measures.find(m => m.id === products.find(p => p.id === item.productId)?.measureId)?.measureMultiplier) || 1) / (Number(measures.find(m => m.id === sub?.measureId)?.measureMultiplier) || 1)).toFixed(3).replace(/\.?0+$/, '')} ${sub?.measureUnit} ao estoque.`
+                        : `Cada embalagem adicionará ${products.find(p => p.id === item.productId)?.unitQuantity} ${sub?.measureUnit} ao estoque.`
+                      }
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}

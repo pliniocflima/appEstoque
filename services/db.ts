@@ -16,7 +16,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Measure, Product, Movement, CartItem, UserProfile } from '../types';
+import { Measure, Product, Movement, CartItem, UserProfile, Subcategory } from '../types';
 
 // Gestão de Perfil e Casa
 export const getOrCreateProfile = async (uid: string, email: string | null): Promise<UserProfile> => {
@@ -36,13 +36,14 @@ export const updateHousehold = async (uid: string, householdId: string) => {
 export const subscribeToCollection = (
   colName: string, 
   householdId: string, 
-  callback: (data: any[]) => void
+  callback: (data: any[], metadata: { hasPendingWrites: boolean }) => void
 ) => {
   if (!householdId) return () => {};
   const q = query(collection(db, colName), where("householdId", "==", householdId));
-  return onSnapshot(q, (snapshot) => {
+  
+  return onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
     const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    callback(items);
+    callback(items, { hasPendingWrites: snapshot.metadata.hasPendingWrites });
   });
 };
 
@@ -62,7 +63,6 @@ export const deleteMovementWithReversal = async (movement: Movement) => {
   if (subSnap.exists()) {
     const subData = subSnap.data();
     const currentStock = Number(subData.currentStock) || 0;
-    // Reversão: subtrai o que foi somado ou soma o que foi subtraído
     const reversedStock = currentStock - (Number(movement.quantity) || 0);
     batch.update(subRef, { currentStock: Math.max(0, reversedStock) });
   }
@@ -92,7 +92,9 @@ export const addToCart = async (userId: string, householdId: string, item: any) 
 };
 
 export const updateCartItem = async (id: string, data: any) => {
-  await updateDoc(doc(db, 'cart', id), data);
+  await updateDoc(doc(db, id.startsWith('cart/') ? id : `cart/${id}`), data).catch(() => {
+     return updateDoc(doc(db, 'cart', id), data);
+  });
 };
 
 export const removeFromCart = async (id: string) => {
@@ -110,9 +112,9 @@ export const processPurchase = async (
   userId: string, 
   householdId: string, 
   cart: CartItem[], 
-  subcategories: any[], 
-  products: any[], 
-  measures: any[],
+  subcategories: Subcategory[], 
+  products: Product[], 
+  measures: Measure[],
   purchaseDate: Date,
   location: string
 ) => {
@@ -131,14 +133,40 @@ export const processPurchase = async (
       let displaySuffix = '';
 
       if (prod) {
-        addedQty = itemQty * (Number(prod.unitQuantity) || 1);
-        displaySuffix = `+${itemQty} un de ${prod.name}`;
+        // Conversão Inteligente Produto -> Item
+        const prodMeasure = measures.find(m => m.id === prod.measureId);
+        const subMeasure = measures.find(m => m.id === sub.measureId);
+        
+        const mProd = prodMeasure ? Number(prodMeasure.measureMultiplier) : 1;
+        const mSub = subMeasure ? Number(subMeasure.measureMultiplier) : 1;
+        
+        // Fórmula: (Qtd Comprada * Tamanho Embalagem * Multiplicador Produto) / Multiplicador Item
+        addedQty = (itemQty * Number(prod.unitQuantity) * mProd) / mSub;
+        
+        // Arredondamento para evitar erros de ponto flutuante do JS
+        addedQty = Math.round(addedQty * 1000) / 1000;
+
+        const isDifferentUnit = prod.measureUnit !== sub.measureUnit;
+        
+        // Formato solicitado: +quantity itemUnit (+Embalagens un de productName Convertido de prodUnit para itemUnit)
+        if (isDifferentUnit) {
+          displaySuffix = `+${addedQty} ${sub.measureUnit} (+${itemQty} un de ${prod.name} Convertido de ${prod.measureUnit} para ${sub.measureUnit})`;
+        } else {
+          displaySuffix = `+${addedQty} ${sub.measureUnit} (+${itemQty} un de ${prod.name})`;
+        }
       } else {
+        // Compra Genérica
         const unitToUse = item.unit || sub.measureUnit;
         const measureObj = measures.find(m => m.measureUnit === unitToUse);
-        const multiplier = measureObj ? Number(measureObj.measureMultiplier) : 1;
-        addedQty = itemQty * multiplier;
-        displaySuffix = `+${itemQty} ${unitToUse}`;
+        const subMeasure = measures.find(m => m.id === sub.measureId);
+        
+        const mInput = measureObj ? Number(measureObj.measureMultiplier) : 1;
+        const mSub = subMeasure ? Number(subMeasure.measureMultiplier) : 1;
+
+        addedQty = (itemQty * mInput) / mSub;
+        addedQty = Math.round(addedQty * 1000) / 1000;
+        
+        displaySuffix = `+${addedQty} ${sub.measureUnit} (+${itemQty} ${unitToUse})`;
       }
 
       const newStock = (Number(sub.currentStock) || 0) + addedQty;
@@ -175,10 +203,5 @@ export const processPurchase = async (
   const snap = await getDocs(q);
   snap.docs.forEach(d => batch.delete(d.ref));
 
-  try {
-    await batch.commit();
-  } catch (error) {
-    console.error("Erro ao executar commit do batch:", error);
-    throw error;
-  }
+  await batch.commit();
 };

@@ -57,7 +57,14 @@ const StockAudit: React.FC = () => {
       const matchesCategory = selectedCategory === 'todas' || item.categoryId === selectedCategory;
       return matchesSearch && matchesCategory;
     })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => {
+      // Regra: Categoria > Nome
+      const catA = a.categoryName || '';
+      const catB = b.categoryName || '';
+      const catCompare = catA.localeCompare(catB);
+      if (catCompare !== 0) return catCompare;
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="space-y-6">
@@ -73,7 +80,7 @@ const StockAudit: React.FC = () => {
           <input
             type="text"
             placeholder="Buscar item ou categoria..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -106,59 +113,63 @@ const StockAudit: React.FC = () => {
           <table className="w-full text-left">
             <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase font-bold tracking-wider border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Item / Categoria</th>
-                <th className="px-6 py-4">Estoque Atual</th>
-                <th className="px-6 py-4 text-right">Ação</th>
+                <th className="px-4 py-3">Item</th>
+                <th className="px-4 py-3">Estoque Atual</th>
+                <th className="px-4 py-3 text-right">Ação</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filteredItems.map(item => (
-                <tr key={item.id} className={`hover:bg-blue-50/20 transition-colors ${adjustingId === item.id ? 'bg-blue-50/50' : ''}`}>
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-gray-800">{item.name}</div>
-                    <div className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">{item.categoryName}</div>
+                <tr key={item.id} className={`hover:bg-blue-50/10 transition-colors ${adjustingId === item.id ? 'bg-blue-50/30' : ''}`}>
+                  <td className="px-4 py-3 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="font-bold text-gray-800 text-sm truncate">{item.name}</div>
+                      <span className="bg-gray-100 text-gray-500 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
+                        {item.categoryName}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-3">
                     {adjustingId === item.id ? (
-                      <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                      <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2 duration-200">
                         <input
                           type="number"
                           step="0.1"
-                          className="w-24 p-2 border-2 border-blue-500 rounded-lg font-bold text-center"
+                          className="w-20 p-1.5 border-2 border-blue-500 rounded-lg font-bold text-center text-sm"
                           value={adjustValue}
                           onChange={(e) => setAdjustValue(e.target.value)}
                           autoFocus
                         />
-                        <span className="text-xs font-bold text-blue-600">{item.measureUnit}</span>
+                        <span className="text-[10px] font-bold text-blue-600">{item.measureUnit}</span>
                       </div>
                     ) : (
-                      <div className="font-mono font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-full w-fit text-sm">
-                        {item.currentStock} <span className="text-[10px] font-normal text-gray-400 ml-1">{item.measureUnit}</span>
+                      <div className="font-mono font-bold text-gray-700 bg-gray-50 px-2.5 py-0.5 rounded-full w-fit text-xs border border-gray-100">
+                        {item.currentStock} <span className="text-[9px] font-normal text-gray-400 ml-0.5">{item.measureUnit}</span>
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-4 py-3 text-right">
                     {adjustingId === item.id ? (
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-1.5">
                         <button 
                           onClick={() => handleAdjustStock(item)}
-                          className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                          className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
                         >
-                          <Check size={18} />
+                          <Check size={16} />
                         </button>
                         <button 
                           onClick={() => setAdjustingId(null)}
-                          className="p-2 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-colors"
+                          className="p-1.5 bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition-colors"
                         >
-                          <X size={18} />
+                          <X size={16} />
                         </button>
                       </div>
                     ) : (
                       <button 
                         onClick={() => { setAdjustingId(item.id); setAdjustValue(item.currentStock.toString()); }}
-                        className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-2 ml-auto font-medium text-xs"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1.5 ml-auto font-bold text-[10px] uppercase"
                       >
-                        <Scale size={16} />
+                        <Scale size={14} />
                         <span className="hidden sm:inline">Ajustar</span>
                       </button>
                     )}
@@ -167,21 +178,14 @@ const StockAudit: React.FC = () => {
               ))}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-gray-400 italic">
-                    Nenhum item encontrado para os filtros selecionados.
+                  <td colSpan={3} className="px-6 py-12 text-center text-gray-400 italic text-sm">
+                    Nenhum item encontrado.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
-      
-      <div className="bg-blue-50 p-4 rounded-xl flex items-start gap-3 border border-blue-100">
-        <Scale className="text-blue-600 mt-0.5 shrink-0" size={20} />
-        <p className="text-xs text-blue-800 leading-relaxed">
-          <strong>Dica:</strong> A conferência de estoque deve ser feita periodicamente para garantir que o sistema reflita a realidade física da sua despensa. Ajustes feitos aqui serão registrados no histórico como "Ajuste Manual".
-        </p>
       </div>
     </div>
   );

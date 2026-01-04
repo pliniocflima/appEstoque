@@ -26,7 +26,6 @@ export interface Subcategory {
   minimumStock: number;
   targetStock: number;
   currentStock: number;
-  productsQuantity: number;
   userId: string;
   householdId: string;
 }
@@ -66,7 +65,7 @@ export interface Movement {
   userId: string;
   householdId: string;
   value?: number;
-  location?: string; // Novo: Local da compra
+  location?: string;
 }
 
 export interface CartItem {

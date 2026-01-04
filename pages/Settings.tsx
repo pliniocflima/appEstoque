@@ -1,16 +1,21 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { subscribeToCollection, addMeasure, deleteItem, updateItem, updateHousehold } from '../services/db';
 import { useApp } from '../App';
-import { Measure, Subcategory } from '../types';
+import { Measure, Subcategory, Category } from '../types';
 import { Button } from '../components/Button';
-import { Trash2, Ruler, Edit2, Check, X, ShieldAlert, Target, Users, Copy, Share2, Home, Plus, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Trash2, Ruler, Edit2, Check, X, ShieldAlert, Target, Users, Copy, Share2, Home, Plus, AlertTriangle, CheckCircle2, Search, Filter } from 'lucide-react';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'measures' | 'stock' | 'household'>('measures');
   const [measures, setMeasures] = useState<Measure[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const { profile, refreshProfile } = useApp();
+
+  // Search & Filter for Stock
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('todas');
 
   // Form State
   const [ctrl, setCtrl] = useState('Peso');
@@ -26,8 +31,9 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (profile) {
       const uM = subscribeToCollection('measures', profile.householdId, (d) => setMeasures(d));
-      const uS = subscribeToCollection('subcategories', profile.householdId, (d) => setSubcategories(d));
-      return () => { uM(); uS(); };
+      const uS = subscribeToCollection('subcategories', profile.householdId, (d) => setSubcategories(d as Subcategory[]));
+      const uC = subscribeToCollection('categories', profile.householdId, (d) => setCategories(d as Category[]));
+      return () => { uM(); uS(); uC(); };
     }
   }, [profile]);
 
@@ -61,6 +67,36 @@ const Settings: React.FC = () => {
     }
   };
 
+  const filteredStock = useMemo(() => {
+    return subcategories
+      .filter(s => {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = s.name.toLowerCase().includes(searchLower) || (s.categoryName || '').toLowerCase().includes(searchLower);
+        const matchesCategory = selectedCategory === 'todas' || s.categoryId === selectedCategory;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        // Regra: Categoria > Nome do Item
+        const catCompare = (a.categoryName || '').localeCompare(b.categoryName || '');
+        if (catCompare !== 0) return catCompare;
+        return a.name.localeCompare(b.name);
+      });
+  }, [subcategories, searchTerm, selectedCategory]);
+
+  const sortedCategoriesDropdown = useMemo(() => {
+    // Regra: Ordem Alfabética
+    return [...categories].sort((a, b) => a.name.localeCompare(b.name));
+  }, [categories]);
+
+  const sortedMeasuresList = useMemo(() => {
+    return [...measures].sort((a, b) => {
+      // Regra: Controle > Multiplicador
+      const ctrlCompare = (a.measureControl || '').localeCompare(b.measureControl || '');
+      if (ctrlCompare !== 0) return ctrlCompare;
+      return (Number(a.measureMultiplier) || 0) - (Number(b.measureMultiplier) || 0);
+    });
+  }, [measures]);
+
   return (
     <div className="space-y-6 pb-10">
       <h2 className="text-2xl font-bold text-gray-800">Configurações</h2>
@@ -78,7 +114,7 @@ const Settings: React.FC = () => {
         {(['measures', 'stock', 'household'] as const).map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => { setActiveTab(tab); setSearchTerm(''); setSelectedCategory('todas'); }}
             className={`px-4 py-2 rounded-lg font-medium transition-all text-xs whitespace-nowrap flex items-center gap-2 ${
               activeTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -157,7 +193,7 @@ const Settings: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {measures.map(m => (
+                  {sortedMeasuresList.map(m => (
                     <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-4 px-2 font-bold text-gray-700">
                         {m.measureUnit} <span className="font-normal text-[10px] text-gray-400 uppercase ml-2">({m.measureControl})</span>
@@ -178,48 +214,73 @@ const Settings: React.FC = () => {
 
         {activeTab === 'stock' && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="bg-blue-50 p-4 rounded-lg flex items-center gap-3 border border-blue-100 mb-4">
-              <Target className="text-blue-600 shrink-0" size={20} />
-              <p className="text-xs text-blue-800">
-                Configure aqui os níveis de segurança para cada item.
-              </p>
+            {/* Barra de Pesquisa e Filtro */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Pesquisar item para configurar..."
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><X size={16}/></button>}
+              </div>
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <select 
+                  className="pl-9 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm appearance-none text-sm font-medium min-w-[160px]"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                >
+                  <option value="todas">Todas Categorias</option>
+                  {sortedCategoriesDropdown.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
             </div>
-            <div className="divide-y border rounded-xl overflow-hidden">
-              {subcategories.sort((a,b) => a.name.localeCompare(b.name)).map(s => (
-                <div key={s.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50 transition-colors">
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-gray-800 truncate">{s.name}</h4>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">{s.categoryName}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredStock.map(s => (
+                <div key={s.id} className="p-4 border rounded-xl hover:bg-gray-50 transition-colors shadow-sm bg-white group">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <h4 className="font-bold text-gray-800 text-sm truncate">{s.name}</h4>
+                    <span className="bg-gray-100 text-gray-500 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">{s.categoryName}</span>
                   </div>
-                  <div className="flex items-center gap-6 justify-between sm:justify-end">
-                    <div className="text-center group">
-                      <label className="block text-[9px] text-gray-400 font-bold uppercase mb-1">Mínimo</label>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-[9px] text-gray-400 font-bold uppercase tracking-tight">Estoque Mínimo</label>
                       <div className="flex items-center">
                         <input 
                           type="number" step="0.1"
-                          className="w-24 border border-gray-200 rounded-l p-2 text-center font-bold text-sm bg-white focus:border-red-400 outline-none" 
+                          className="w-full border border-gray-200 rounded-l-lg p-2 text-center font-bold text-sm bg-white focus:ring-1 focus:ring-red-400 outline-none" 
                           defaultValue={s.minimumStock}
                           onBlur={async (e) => await updateItem('subcategories', s.id, { minimumStock: Number(e.target.value) })}
                         />
-                        <span className="bg-gray-100 border border-l-0 border-gray-200 rounded-r px-2 py-2 text-[10px] font-bold text-gray-500 uppercase">{s.measureUnit}</span>
+                        <span className="bg-gray-50 border border-l-0 border-gray-200 rounded-r-lg px-2 py-2 text-[9px] font-bold text-gray-400 outline-none">{s.measureUnit}</span>
                       </div>
                     </div>
-                    <div className="text-center">
-                      <label className="block text-[9px] text-gray-400 font-bold uppercase mb-1">Alvo</label>
+                    <div className="space-y-1">
+                      <label className="block text-[9px] text-gray-400 font-bold uppercase tracking-tight">Estoque Alvo</label>
                       <div className="flex items-center">
                         <input 
                           type="number" step="0.1"
-                          className="w-24 border border-gray-200 rounded-l p-2 text-center font-bold text-blue-600 text-sm bg-white focus:border-blue-400 outline-none" 
+                          className="w-full border border-gray-200 rounded-l-lg p-2 text-center font-bold text-blue-600 text-sm bg-white focus:ring-1 focus:ring-blue-400 outline-none" 
                           defaultValue={s.targetStock}
                           onBlur={async (e) => await updateItem('subcategories', s.id, { targetStock: Number(e.target.value) })}
                         />
-                        <span className="bg-gray-100 border border-l-0 border-gray-200 rounded-r px-2 py-2 text-[10px] font-bold text-gray-500 uppercase">{s.measureUnit}</span>
+                        <span className="bg-gray-50 border border-l-0 border-gray-200 rounded-r-lg px-2 py-2 text-[9px] font-bold text-gray-400 outline-none">{s.measureUnit}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+            
+            {filteredStock.length === 0 && (
+              <div className="text-center py-10 text-gray-400 italic text-sm">Nenhum item encontrado.</div>
+            )}
           </div>
         )}
       </div>

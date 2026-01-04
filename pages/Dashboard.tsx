@@ -1,26 +1,19 @@
 
-import React, { useEffect, useState } from 'react';
-import { subscribeToCollection } from '../services/db';
-import { auth } from '../services/firebase';
-import { Subcategory } from '../types';
+import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Utensils, AlertTriangle } from 'lucide-react';
-import { useApp } from '../App';
+import { useData } from '../App';
 
 const Dashboard: React.FC = () => {
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const user = auth.currentUser;
-  const { profile } = useApp();
+  const { subcategories, loading } = useData();
 
-  useEffect(() => {
-    if (user && profile) {
-      const unsub = subscribeToCollection('subcategories', profile.householdId, (data) => {
-        setSubcategories(data as Subcategory[]);
-      });
-      return () => unsub();
-    }
-  }, [user, profile]);
+  if (loading) {
+    return <div className="animate-pulse space-y-4">
+      <div className="h-32 bg-gray-200 rounded-xl"></div>
+      <div className="h-64 bg-gray-200 rounded-xl"></div>
+    </div>;
+  }
 
   const totalItems = subcategories.length;
   const lowStockItems = subcategories.filter(s => {
@@ -88,7 +81,7 @@ const Dashboard: React.FC = () => {
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400 text-sm italic">
-              Nenhum dado para exibir. Comece cadastrando itens.
+              Nenhum dado para exibir.
             </div>
           )}
         </div>
@@ -102,7 +95,7 @@ const Dashboard: React.FC = () => {
             >
               <div className="flex items-center">
                 <ShoppingCart className="text-blue-600 mr-3" size={20} />
-                <span className="font-medium text-gray-700">Ver Lista de Compras</span>
+                <span className="font-medium text-gray-700">Lista de Compras</span>
               </div>
               <span className="text-sm text-gray-500">Ir &rarr;</span>
             </Link>

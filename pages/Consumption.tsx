@@ -85,8 +85,8 @@ const Consumption: React.FC = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
           <input
             type="text"
-            placeholder="O que você usou? (ex: Arroz, Sabão...)"
-            className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all"
+            placeholder="O que você usou?"
+            className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -118,25 +118,29 @@ const Consumption: React.FC = () => {
         <div className="divide-y divide-gray-100">
           {filteredItems.map(item => (
             <div key={item.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-              <div className="flex-1 mr-4">
-                <div className="font-bold text-gray-800">{item.name}</div>
-                <div className="text-[10px] text-gray-400 uppercase font-bold tracking-tight mb-1">{item.categoryName}</div>
-                <div className={`text-sm font-mono ${getStockColorClass(item)}`}>
+              <div className="flex-1 mr-4 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className="font-bold text-gray-800 truncate">{item.name}</div>
+                  <span className="bg-gray-100 text-gray-500 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
+                    {item.categoryName}
+                  </span>
+                </div>
+                <div className={`text-xs font-mono ${getStockColorClass(item)}`}>
                   Estoque: {item.currentStock} {item.measureUnit}
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 shrink-0">
                 <div className="relative">
                   <input
                     type="number"
                     step="0.01"
                     placeholder="0"
-                    className="w-24 p-2 pr-8 text-sm border border-gray-300 rounded-lg text-right font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-36 p-2 pr-12 text-sm border border-gray-300 rounded-lg text-right font-bold focus:ring-2 focus:ring-blue-500 outline-none"
                     value={amounts[item.id] || ''}
                     onChange={(e) => setAmounts(prev => ({ ...prev, [item.id]: e.target.value }))}
                   />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase pointer-events-none">
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">
                     {item.measureUnit}
                   </span>
                 </div>
@@ -144,10 +148,9 @@ const Consumption: React.FC = () => {
                   onClick={() => handleConsume(item)}
                   disabled={!amounts[item.id]}
                   variant="danger"
-                  className="p-2 h-10 w-10 flex items-center justify-center rounded-lg shadow-sm active:scale-95 transition-transform"
-                  title="Registrar Saída"
+                  className="p-2 h-9 w-9 flex items-center justify-center rounded-lg shadow-sm active:scale-95 transition-transform"
                 >
-                  <Minus size={20} />
+                  <Minus size={18} />
                 </Button>
               </div>
             </div>
@@ -156,7 +159,7 @@ const Consumption: React.FC = () => {
         {filteredItems.length === 0 && (
           <div className="p-12 text-center text-gray-400 flex flex-col items-center gap-2">
             <Search size={32} className="text-gray-200" />
-            <p className="italic">Nenhum item encontrado.</p>
+            <p className="italic text-sm">Nenhum item encontrado.</p>
           </div>
         )}
       </div>
