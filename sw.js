@@ -1,4 +1,4 @@
-const CACHE_NAME = 'estoque-casa-vBETA4';
+const CACHE_NAME = 'estoque-casa-ver9';
 const urlsToCache = [
   './',
   './index.html',
